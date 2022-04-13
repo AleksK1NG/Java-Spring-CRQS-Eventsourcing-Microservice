@@ -1,6 +1,8 @@
 package com.eventsourcing.filters;
 
+import com.eventsourcing.es.exceptions.AggregateNotFoundException;
 import com.eventsourcing.exceptions.InternalServerErrorResponse;
+import com.eventsourcing.exceptions.NotFoundResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
@@ -39,5 +41,13 @@ public class GlobalControllerAdvice {
         final Map<String, String> errorMap = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error -> errorMap.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMap);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AggregateNotFoundException.class)
+    public ResponseEntity<NotFoundResponseDTO> handleAggregateNotFoundException(AggregateNotFoundException ex) {
+        final var notFoundResponseDTO = new NotFoundResponseDTO(HttpStatus.NOT_FOUND.value(), ex.getMessage(), LocalDateTime.now());
+        log.error("AggregateNotFoundException response ex:", ex);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(notFoundResponseDTO);
     }
 }

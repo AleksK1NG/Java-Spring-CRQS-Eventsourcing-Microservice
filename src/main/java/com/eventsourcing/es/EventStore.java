@@ -1,6 +1,7 @@
 package com.eventsourcing.es;
 
 
+import com.eventsourcing.es.exceptions.AggregateNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -34,13 +35,8 @@ public class EventStore implements EventStoreDB {
                             "metadata", Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
                             "version", event.getVersion()));
 
-            log.info("(saveEvents) saved event: {}", event);
+            log.info("(saveEvents) saved result: {}, event: {}", result, event);
         });
-    }
-
-    private Snapshot getSnapshot(String aggregateId) {
-
-        return new Snapshot();
     }
 
     @Override
@@ -48,18 +44,15 @@ public class EventStore implements EventStoreDB {
         final List<Event> events = jdbcTemplate.query("select event_id ,aggregate_id, aggregate_type, event_type, data, metadata, version, timestamp" +
                         " from events e where e.aggregate_id = :aggregate_id and e.version > :version ORDER BY e.version ASC",
                 Map.of("aggregate_id", aggregateId, "version", version),
-                (rs, rowNum) -> {
-                    Event event = Event.builder()
-                            .aggregateId(rs.getString("aggregate_id"))
-                            .aggregateType(rs.getString("aggregate_type"))
-                            .eventType(rs.getString("event_type"))
-                            .data(rs.getBytes("data"))
-                            .metaData(rs.getBytes("metadata"))
-                            .version(rs.getLong("version"))
-                            .timeStamp(rs.getTimestamp("timestamp").toLocalDateTime())
-                            .build();
-                    return event;
-                });
+                (rs, rowNum) -> Event.builder()
+                        .aggregateId(rs.getString("aggregate_id"))
+                        .aggregateType(rs.getString("aggregate_type"))
+                        .eventType(rs.getString("event_type"))
+                        .data(rs.getBytes("data"))
+                        .metaData(rs.getBytes("metadata"))
+                        .version(rs.getLong("version"))
+                        .timeStamp(rs.getTimestamp("timestamp").toLocalDateTime())
+                        .build());
 
         log.info("(loadEvents) events list: {}", events);
         return events;
@@ -78,6 +71,7 @@ public class EventStore implements EventStoreDB {
                         "data", Objects.isNull(snapshot.getData()) ? new byte[]{} : snapshot.getData(),
                         "metadata", Objects.isNull(snapshot.getMetaData()) ? new byte[]{} : snapshot.getMetaData(),
                         "version", snapshot.getVersion()));
+
         log.info("(saveSnapshot) result: {}", update);
     }
 
@@ -92,7 +86,8 @@ public class EventStore implements EventStoreDB {
         if (aggregate.getVersion() % 3 == 0) {
             this.saveSnapshot(aggregate);
         }
-        log.info("(save) aggregate saved: {}", aggregate);
+
+        log.info("(save) saved aggregate: {}", aggregate);
     }
 
     private void handleConcurrency(String aggregateId) {
@@ -117,6 +112,7 @@ public class EventStore implements EventStoreDB {
                         .version(rs.getLong("version"))
                         .timeStamp(rs.getTimestamp("timestamp").toLocalDateTime())
                         .build()).stream().findFirst();
+
         snapshot.ifPresent(result -> log.info("(loadSnapshot) snapshot: {}", result));
         return snapshot;
     }
@@ -124,7 +120,8 @@ public class EventStore implements EventStoreDB {
     private <T extends AggregateRoot> T getAggregate(final String aggregateId, final Class<T> aggregateType) {
         try {
             return aggregateType.getConstructor(String.class).newInstance(aggregateId);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
     }
@@ -144,7 +141,6 @@ public class EventStore implements EventStoreDB {
         final Optional<Snapshot> snapshot = this.loadSnapshot(aggregateId);
 
         final var aggregate = this.getSnapshotFromClass(snapshot, aggregateId, aggregateType);
-        log.info("(load) aggregate: {}", aggregate);
 
         final List<Event> events = this.loadEvents(aggregateId, aggregate.getVersion());
         events.forEach(event -> {
@@ -152,7 +148,7 @@ public class EventStore implements EventStoreDB {
             log.info("raise event version: {}", event.getVersion());
         });
 
-        if (aggregate.getVersion() == 0) throw new RuntimeException("aggregate not found id:" + aggregateId);
+        if (aggregate.getVersion() == 0) throw new AggregateNotFoundException(aggregateId);
 
         return aggregate;
     }
