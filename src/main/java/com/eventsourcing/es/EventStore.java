@@ -9,7 +9,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 @Repository
@@ -17,7 +16,8 @@ import java.util.*;
 @Slf4j
 public class EventStore implements EventStoreDB {
 
-    //    private final JdbcTemplate jdbcTemplate;
+    public static final int SNAPSHOT_FREQUENCY = 3;
+
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     @Override
@@ -83,7 +83,7 @@ public class EventStore implements EventStoreDB {
         }
 
         this.saveEvents(aggregate.getChanges());
-        if (aggregate.getVersion() % 3 == 0) {
+        if (aggregate.getVersion() % SNAPSHOT_FREQUENCY == 0) {
             this.saveSnapshot(aggregate);
         }
 
@@ -120,9 +120,8 @@ public class EventStore implements EventStoreDB {
     private <T extends AggregateRoot> T getAggregate(final String aggregateId, final Class<T> aggregateType) {
         try {
             return aggregateType.getConstructor(String.class).newInstance(aggregateId);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
-            throw new RuntimeException(e);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -150,11 +149,21 @@ public class EventStore implements EventStoreDB {
 
         if (aggregate.getVersion() == 0) throw new AggregateNotFoundException(aggregateId);
 
+        log.info("(load) loaded aggregate: {}", aggregate);
         return aggregate;
     }
 
     @Override
     public Boolean exists(String aggregateId) {
-        return null;
+        try {
+            final var id = jdbcTemplate.queryForObject("SELECT aggregate_id FROM events WHERE e e.aggregate_id = :aggregate_id", Map.of("aggregate_id", aggregateId), String.class);
+            log.info("aggregate exists id: {}", id);
+            return true;
+        } catch (Exception ex) {
+            if (!(ex instanceof EmptyResultDataAccessException)) {
+                throw new RuntimeException("exists", ex);
+            }
+            return false;
+        }
     }
 }
