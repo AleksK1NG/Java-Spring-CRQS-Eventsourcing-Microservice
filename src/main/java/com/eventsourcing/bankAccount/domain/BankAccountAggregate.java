@@ -11,6 +11,7 @@ import com.eventsourcing.es.exceptions.InvalidEventTypeException;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 @Data
 @Builder
@@ -55,14 +56,19 @@ public class BankAccountAggregate extends AggregateRoot {
     }
 
     private void handle(final EmailChangedEvent event) {
+        Objects.requireNonNull(event.getNewEmail());
+        if (event.getNewEmail().isBlank()) throw new RuntimeException("invalid email address");
         this.email = event.getNewEmail();
     }
 
     private void handle(final AddressUpdatedEvent event) {
+        Objects.requireNonNull(event.getNewAddress());
+        if (event.getNewAddress().isBlank()) throw new RuntimeException("invalid address");
         this.address = event.getNewAddress();
     }
 
     private void handle(final BalanceDepositedEvent event) {
+        Objects.requireNonNull(event.getAmount());
         this.balance = this.balance.add(event.getAmount());
     }
 

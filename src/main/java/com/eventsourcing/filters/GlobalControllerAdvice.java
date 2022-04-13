@@ -27,7 +27,8 @@ public class GlobalControllerAdvice {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<InternalServerErrorResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
         final var response = new InternalServerErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage(), LocalDateTime.now().toString());
-        log.error("OrderNotFoundException response: {} ", response);
+        log.error("RuntimeException response: {} ", response);
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 

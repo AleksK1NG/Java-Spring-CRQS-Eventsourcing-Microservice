@@ -5,16 +5,18 @@ import com.eventsourcing.bankAccount.domain.BankAccountAggregate;
 import com.eventsourcing.es.EventStoreDB;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
 @Slf4j
+@Service
 public class BankAccountCommandHandler implements BankAccountCommandService{
 
     private final EventStoreDB eventStoreDB;
 
     @Override
     public String handle(CreateBankAccountCommand command) {
-        final var aggregate = eventStoreDB.load(command.aggregateID(), BankAccountAggregate.class);
+        final var aggregate = new BankAccountAggregate(command.aggregateID());
         aggregate.createBankAccount(command.email(), command.address(), command.userName());
         eventStoreDB.save(aggregate);
 
