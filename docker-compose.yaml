@@ -1,0 +1,129 @@
+version: "3.9"
+
+services:
+  postgresql:
+    image: postgres:14.2
+    container_name: postgresql
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=microservices
+      - POSTGRES_HOST=5432
+    command: -p 5432
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    networks: [ "microservices" ]
+
+  zookeeper:
+    image: 'bitnami/zookeeper:3.8.0'
+    ports:
+      - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - "./zookeeper:/zookeeper"
+    networks: [ "microservices" ]
+
+  kafka:
+    image: 'bitnami/kafka:3.0.1'
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    volumes:
+      - "./kafka_data:/bitnami"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
+    depends_on:
+      - zookeeper
+    networks: [ "microservices" ]
+
+  redis:
+    image: redis:6-alpine
+    restart: always
+    container_name: microservices_redis
+    ports:
+      - "6379:6379"
+    networks: [ "microservices" ]
+
+  mongodb:
+    image: docker.io/bitnami/mongodb:4.4
+    restart: always
+    container_name: microservices_mongo
+    environment:
+      MONGODB_ROOT_USER: admin
+      MONGODB_ROOT_PASSWORD: admin
+      BITNAMI_DEBUG: "false"
+      ALLOW_EMPTY_PASSWORD: "no"
+      MONGODB_SYSTEM_LOG_VERBOSITY: "0"
+      MONGODB_DISABLE_SYSTEM_LOG: "no"
+      MONGODB_DISABLE_JAVASCRIPT: "no"
+      MONGODB_ENABLE_JOURNAL: "yes"
+      MONGODB_ENABLE_IPV6: "no"
+      MONGODB_ENABLE_DIRECTORY_PER_DB: "no"
+      MONGODB_DATABASE: "microservices"
+    volumes:
+      - ./mongodb_data_container:/data/db
+    ports:
+      - "27017:27017"
+    networks: [ "microservices" ]
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks: [ "microservices" ]
+
+  node_exporter:
+    container_name: node_exporter_container
+    restart: always
+    image: prom/node-exporter
+    ports:
+      - '9101:9100'
+    networks: [ "microservices" ]
+
+  grafana:
+    container_name: grafana_container
+    restart: always
+    image: grafana/grafana
+    ports:
+      - '3005:3000'
+    networks: [ "microservices" ]
+
+  jaeger:
+    container_name: jaeger_container
+    restart: always
+    image: jaegertracing/all-in-one:1.21
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "9411:9411"
+    networks: [ "microservices" ]
+
+networks:
+  microservices:
+    name: microservices
