@@ -5,6 +5,7 @@ import com.eventsourcing.bankAccount.domain.BankAccountAggregate;
 import com.eventsourcing.es.EventStoreDB;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.sleuth.annotation.NewSpan;
 import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
@@ -15,6 +16,7 @@ public class BankAccountCommandHandler implements BankAccountCommandService{
     private final EventStoreDB eventStoreDB;
 
     @Override
+    @NewSpan
     public String handle(CreateBankAccountCommand command) {
         final var aggregate = new BankAccountAggregate(command.aggregateID());
         aggregate.createBankAccount(command.email(), command.address(), command.userName());
@@ -25,6 +27,7 @@ public class BankAccountCommandHandler implements BankAccountCommandService{
     }
 
     @Override
+    @NewSpan
     public void handle(ChangeEmailCommand command) {
         final var aggregate = eventStoreDB.load(command.aggregateID(), BankAccountAggregate.class);
         aggregate.changeEmail(command.newEmail());
@@ -33,6 +36,7 @@ public class BankAccountCommandHandler implements BankAccountCommandService{
     }
 
     @Override
+    @NewSpan
     public void handle(ChangeAddressCommand command) {
         final var aggregate = eventStoreDB.load(command.aggregateID(), BankAccountAggregate.class);
         aggregate.changeAddress(command.newAddress());
@@ -41,6 +45,7 @@ public class BankAccountCommandHandler implements BankAccountCommandService{
     }
 
     @Override
+    @NewSpan
     public void handle(DepositAmountCommand command) {
         final var aggregate = eventStoreDB.load(command.aggregateID(), BankAccountAggregate.class);
         aggregate.depositBalance(command.amount());

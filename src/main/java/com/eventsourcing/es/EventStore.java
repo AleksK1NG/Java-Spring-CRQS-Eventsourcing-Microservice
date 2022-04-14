@@ -4,6 +4,7 @@ package com.eventsourcing.es;
 import com.eventsourcing.es.exceptions.AggregateNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.sleuth.annotation.NewSpan;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -28,6 +29,7 @@ public class EventStore implements EventStoreDB {
     private final EventBus eventBus;
 
     @Override
+    @NewSpan
     public void saveEvents(List<Event> events) {
         if (events.isEmpty()) return;
 
@@ -46,6 +48,7 @@ public class EventStore implements EventStoreDB {
     }
 
     @Override
+    @NewSpan
     public List<Event> loadEvents(String aggregateId, long version) {
         final List<Event> events = jdbcTemplate.query(LOAD_EVENTS_QUERY, Map.of("aggregate_id", aggregateId, "version", version),
                 (rs, rowNum) -> Event.builder()
@@ -78,6 +81,7 @@ public class EventStore implements EventStoreDB {
 
     @Override
     @Transactional
+    @NewSpan
     public <T extends AggregateRoot> void save(T aggregate) {
         final List<Event> aggregateEvents = new ArrayList<>(aggregate.getChanges());
 
@@ -95,6 +99,7 @@ public class EventStore implements EventStoreDB {
         log.info("(save) saved aggregate: {}", aggregate);
     }
 
+    @NewSpan
     private void handleConcurrency(String aggregateId) {
         try {
             String aggregateID = jdbcTemplate.queryForObject(HANDLE_CONCURRENCY_QUERY, Map.of("aggregate_id", aggregateId), String.class);
@@ -105,6 +110,7 @@ public class EventStore implements EventStoreDB {
         log.info("(handleConcurrency) aggregateID for lock: {}", aggregateId);
     }
 
+    @NewSpan
     private Optional<Snapshot> loadSnapshot(String aggregateId) {
         final Optional<Snapshot> snapshot = jdbcTemplate.query(LOAD_SNAPSHOT_QUERY, Map.of("aggregate_id", aggregateId), (rs, rowNum) -> Snapshot.builder()
                 .aggregateId(rs.getString("aggregate_id"))
@@ -119,6 +125,7 @@ public class EventStore implements EventStoreDB {
         return snapshot;
     }
 
+    @NewSpan
     private <T extends AggregateRoot> T getAggregate(final String aggregateId, final Class<T> aggregateType) {
         try {
             return aggregateType.getConstructor(String.class).newInstance(aggregateId);
@@ -127,6 +134,7 @@ public class EventStore implements EventStoreDB {
         }
     }
 
+    @NewSpan
     private <T extends AggregateRoot> T getSnapshotFromClass(Optional<Snapshot> snapshot, String aggregateId, Class<T> aggregateType) {
         if (snapshot.isEmpty()) {
             final var defaultSnapshot = EventSourcingUtils.snapshotFromAggregate(getAggregate(aggregateId, aggregateType));
@@ -137,6 +145,7 @@ public class EventStore implements EventStoreDB {
 
     @Override
     @Transactional(readOnly = true)
+    @NewSpan
     public <T extends AggregateRoot> T load(String aggregateId, Class<T> aggregateType) {
 
         final Optional<Snapshot> snapshot = this.loadSnapshot(aggregateId);
@@ -156,6 +165,7 @@ public class EventStore implements EventStoreDB {
     }
 
     @Override
+    @NewSpan
     public Boolean exists(String aggregateId) {
         try {
             final var id = jdbcTemplate.queryForObject(EXISTS_QUERY, Map.of("aggregate_id", aggregateId), String.class);
