@@ -27,6 +27,7 @@ public class BankAccountMongoProjection {
             groupId = "${microservice.kafka.groupId}",
             concurrency = "${microservice.kafka.default-concurrency}")
     public void bankAccountMongoProjectionListener(@Payload byte[] data, ConsumerRecordMetadata meta, Acknowledgment ack) {
+        log.info("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp());
         log.info("(BankAccountMongoProjection) data: {}", new String(data));
 
         try {
@@ -35,6 +36,7 @@ public class BankAccountMongoProjection {
             log.info("ack events: {}", Arrays.toString(events));
         } catch (Exception e) {
             ack.nack(100);
+            log.error("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp());
             log.error("bankAccountMongoProjectionListener: {}", e.getMessage());
         }
     }
