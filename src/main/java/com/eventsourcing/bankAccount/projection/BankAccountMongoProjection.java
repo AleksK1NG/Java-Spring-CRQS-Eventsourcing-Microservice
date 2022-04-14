@@ -1,6 +1,7 @@
 package com.eventsourcing.bankAccount.projection;
 
 
+import com.eventsourcing.bankAccount.domain.BankAccountAggregate;
 import com.eventsourcing.bankAccount.domain.BankAccountDocument;
 import com.eventsourcing.bankAccount.events.AddressUpdatedEvent;
 import com.eventsourcing.bankAccount.events.BalanceDepositedEvent;
@@ -11,6 +12,7 @@ import com.eventsourcing.es.Event;
 import com.eventsourcing.es.EventStoreDB;
 import com.eventsourcing.es.Projection;
 import com.eventsourcing.es.SerializerUtils;
+import com.eventsourcing.mappers.BankAccountMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +48,7 @@ public class BankAccountMongoProjection implements Projection {
 
         try {
             final Event[] events = SerializerUtils.deserializeEventsFromJsonBytes(data);
-            this.processEvents( Arrays.stream(events).toList());
+            this.processEvents(Arrays.stream(events).toList());
             ack.acknowledge();
             log.info("ack events: {}", Arrays.toString(events));
         } catch (Exception e) {
@@ -58,9 +60,14 @@ public class BankAccountMongoProjection implements Projection {
 
     private void processEvents(List<Event> events) {
         try {
-            events.forEach(event -> this.when(event));
+            events.forEach(this::when);
         } catch (Exception ex) {
             // TODO: delete from mongo, get from eventStore, upsert to mongo
+            mongoRepository.deleteByAggregateId(events.get(0).getAggregateId());
+            final var aggregate = eventStoreDB.load(events.get(0).getAggregateId(), BankAccountAggregate.class);
+            final var document = BankAccountMapper.bankAccountDocumentFromAggregate(aggregate);
+            BankAccountDocument result = mongoRepository.save(document);
+            log.info("(processEvents) saved document: {}", result);
         }
     }
 
@@ -101,7 +108,8 @@ public class BankAccountMongoProjection implements Projection {
     private void handle(EmailChangedEvent event) {
         log.info("(when) EmailChangedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
-        if (documentOptional.isEmpty()) throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+        if (documentOptional.isEmpty())
+            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
         final var document = documentOptional.get();
         document.setEmail(event.getNewEmail());
@@ -111,7 +119,8 @@ public class BankAccountMongoProjection implements Projection {
     private void handle(AddressUpdatedEvent event) {
         log.info("(when) AddressUpdatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
-        if (documentOptional.isEmpty()) throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+        if (documentOptional.isEmpty())
+            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
         final var document = documentOptional.get();
         document.setAddress(event.getNewAddress());
@@ -121,7 +130,8 @@ public class BankAccountMongoProjection implements Projection {
     private void handle(BalanceDepositedEvent event) {
         log.info("(when) BalanceDepositedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
-        if (documentOptional.isEmpty()) throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+        if (documentOptional.isEmpty())
+            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
         final var document = documentOptional.get();
         final var balance = document.getBalance();

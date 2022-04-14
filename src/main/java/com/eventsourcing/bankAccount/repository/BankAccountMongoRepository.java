@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface BankAccountMongoRepository extends MongoRepository<BankAccountDocument, String> {
 
     Optional<BankAccountDocument> findByAggregateId(String aggregateId);
+
+    void deleteByAggregateId(String aggregateId);
 }
