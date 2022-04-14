@@ -1,8 +1,14 @@
 package com.eventsourcing.bankAccount.projection;
 
 
+import com.eventsourcing.bankAccount.events.AddressUpdatedEvent;
+import com.eventsourcing.bankAccount.events.BalanceDepositedEvent;
+import com.eventsourcing.bankAccount.events.BankAccountCreatedEvent;
+import com.eventsourcing.bankAccount.events.EmailChangedEvent;
 import com.eventsourcing.es.Event;
+import com.eventsourcing.es.Projection;
 import com.eventsourcing.es.SerializerUtils;
+import com.eventsourcing.exceptions.UnknownEventTypeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +23,7 @@ import java.util.Arrays;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class BankAccountMongoProjection {
+public class BankAccountMongoProjection implements Projection {
 
     @Value(value = "${microservice.kafka.topics.bank-account-event-store:bank-account-event-store}")
     private String bankAccountTopicName;
@@ -32,6 +38,7 @@ public class BankAccountMongoProjection {
 
         try {
             final Event[] events = SerializerUtils.deserializeEventsFromJsonBytes(data);
+            Arrays.stream(events).toList().forEach(this::when);
             ack.acknowledge();
             log.info("ack events: {}", Arrays.toString(events));
         } catch (Exception e) {
@@ -39,5 +46,49 @@ public class BankAccountMongoProjection {
             log.error("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp());
             log.error("bankAccountMongoProjectionListener: {}", e.getMessage());
         }
+    }
+
+    @Override
+    public void when(Event event) {
+        final var aggregateId = event.getAggregateId();
+        log.info("(when) >>>>> aggregateId: {}", aggregateId);
+
+        switch (event.getEventType()) {
+            case BankAccountCreatedEvent.BANK_ACCOUNT_CREATED_V1 ->
+                    handle(SerializerUtils.deserializeFromJsonBytes(event.getData(), BankAccountCreatedEvent.class));
+            case EmailChangedEvent.EMAIL_CHANGED_V1 ->
+                    handle(SerializerUtils.deserializeFromJsonBytes(event.getData(), EmailChangedEvent.class));
+            case AddressUpdatedEvent.ADDRESS_UPDATED_V1 ->
+                    handle(SerializerUtils.deserializeFromJsonBytes(event.getData(), AddressUpdatedEvent.class));
+            case BalanceDepositedEvent.BALANCE_DEPOSITED ->
+                    handle(SerializerUtils.deserializeFromJsonBytes(event.getData(), BalanceDepositedEvent.class));
+            default -> throw new UnknownEventTypeException(event.getEventType());
+        }
+    }
+
+
+    private void handle(BankAccountCreatedEvent event) {
+        log.info("(when) BankAccountCreatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
+
+//        final var document = BankAccountDocument.builder()
+//                .aggregateId(event.getAggregateId())
+//                .email(event.getEmail())
+//                .address(event.getAddress())
+//                .userName(event.getUserName())
+//                .balance(BigDecimal.valueOf(0))
+//                .build();
+    }
+
+    private void handle(EmailChangedEvent event) {
+        log.info("(when) EmailChangedEvent: {}, aggregateID: {}", event, event.getAggregateId());
+    }
+
+    private void handle(AddressUpdatedEvent event) {
+        log.info("(when) AddressUpdatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
+    }
+
+    private void handle(BalanceDepositedEvent event) {
+        log.info("(when) BalanceDepositedEvent: {}, aggregateID: {}", event, event.getAggregateId());
+
     }
 }
