@@ -9,6 +9,7 @@ import com.eventsourcing.mappers.BankAccountMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.sleuth.annotation.NewSpan;
+import org.springframework.cloud.sleuth.annotation.SpanTag;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -24,7 +25,7 @@ public class BankAccountQueryHandler implements BankAccountQueryService {
 
     @Override
     @NewSpan
-    public BankAccountResponseDTO handle(GetBankAccountByIDQuery query) {
+    public BankAccountResponseDTO handle(@SpanTag("query") GetBankAccountByIDQuery query) {
         Optional<BankAccountDocument> optionalDocument = mongoRepository.findByAggregateId(query.aggregateID());
         if (optionalDocument.isPresent()) {
             return BankAccountMapper.bankAccountResponseDTOFromDocument(optionalDocument.get());
