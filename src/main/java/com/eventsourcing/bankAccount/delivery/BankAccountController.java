@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.UUID;
 
 @RestController
@@ -32,7 +33,7 @@ public class BankAccountController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createBankAccount(@RequestBody CreateBankAccountRequestDTO dto) {
+    public ResponseEntity<String> createBankAccount(@Valid @RequestBody CreateBankAccountRequestDTO dto) {
         final var aggregateID = UUID.randomUUID().toString();
         final var command = new CreateBankAccountCommand(aggregateID, dto.email(), dto.userName(), dto.address());
         final var id = commandService.handle(command);
@@ -41,7 +42,7 @@ public class BankAccountController {
     }
 
     @PostMapping(path = "/deposit/{aggregateId}")
-    public ResponseEntity<Void> depositAmount(@RequestBody DepositAmountRequestDTO dto, @PathVariable String aggregateId) {
+    public ResponseEntity<Void> depositAmount(@Valid @RequestBody DepositAmountRequestDTO dto, @PathVariable String aggregateId) {
         final var command = new DepositAmountCommand(aggregateId, dto.amount());
         commandService.handle(command);
         log.info("DepositAmountCommand command: {}", command);
@@ -49,7 +50,7 @@ public class BankAccountController {
     }
 
     @PostMapping(path = "/email/{aggregateId}")
-    public ResponseEntity<Void> changeEmail(@RequestBody ChangeEmailRequestDTO dto, @PathVariable String aggregateId) {
+    public ResponseEntity<Void> changeEmail(@Valid @RequestBody ChangeEmailRequestDTO dto, @PathVariable String aggregateId) {
         final var command = new ChangeEmailCommand(aggregateId, dto.newEmail());
         commandService.handle(command);
         log.info("ChangeEmailCommand command: {}", command);
@@ -57,7 +58,7 @@ public class BankAccountController {
     }
 
     @PostMapping(path = "/address/{aggregateId}")
-    public ResponseEntity<Void> changeAddress(@RequestBody ChangeAddressRequestDTO dto, @PathVariable String aggregateId) {
+    public ResponseEntity<Void> changeAddress(@Valid @RequestBody ChangeAddressRequestDTO dto, @PathVariable String aggregateId) {
         final var command = new ChangeAddressCommand(aggregateId, dto.newAddress());
         commandService.handle(command);
         log.info("changeAddress command: {}", command);
