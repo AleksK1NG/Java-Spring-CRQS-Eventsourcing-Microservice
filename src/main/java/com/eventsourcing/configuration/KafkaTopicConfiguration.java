@@ -21,7 +21,7 @@ public class KafkaTopicConfiguration {
     @Value(value = "${kafka.bootstrapServers:localhost:9093}")
     private String bootstrapServers;
 
-    @Value(value = "${order.kafka.topics.bank-account-event-store:bank-account-event-store}")
+    @Value(value = "${microservice.kafka.topics.bank-account-event-store:bank-account-event-store}")
     private String bankAccountTopicName;
 
     @Bean
