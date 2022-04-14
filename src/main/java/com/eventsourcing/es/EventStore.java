@@ -25,6 +25,7 @@ public class EventStore implements EventStoreDB {
     private static final String EXISTS_QUERY = "SELECT aggregate_id FROM events WHERE e e.aggregate_id = :aggregate_id";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final EventBus eventBus;
 
     @Override
     public void saveEvents(List<Event> events) {
@@ -78,6 +79,8 @@ public class EventStore implements EventStoreDB {
     @Override
     @Transactional
     public <T extends AggregateRoot> void save(T aggregate) {
+        final List<Event> aggregateEvents = new ArrayList<>(aggregate.getChanges());
+
         if (aggregate.getVersion() > 1) {
             this.handleConcurrency(aggregate.getId());
         }
@@ -86,6 +89,8 @@ public class EventStore implements EventStoreDB {
         if (aggregate.getVersion() % SNAPSHOT_FREQUENCY == 0) {
             this.saveSnapshot(aggregate);
         }
+
+        eventBus.publish(aggregateEvents);
 
         log.info("(save) saved aggregate: {}", aggregate);
     }
