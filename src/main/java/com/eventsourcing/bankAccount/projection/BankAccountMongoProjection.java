@@ -16,6 +16,7 @@ import com.eventsourcing.mappers.BankAccountMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.sleuth.annotation.NewSpan;
+import org.springframework.cloud.sleuth.annotation.SpanTag;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.adapter.ConsumerRecordMetadata;
 import org.springframework.kafka.support.Acknowledgment;
@@ -56,7 +57,7 @@ public class BankAccountMongoProjection implements Projection {
     }
 
     @NewSpan
-    private void processEvents(List<Event> events) {
+    private void processEvents(@SpanTag("events") List<Event> events) {
         if (events.isEmpty()) return;
 
         try {
@@ -72,7 +73,7 @@ public class BankAccountMongoProjection implements Projection {
 
     @Override
     @NewSpan
-    public void when(Event event) {
+    public void when(@SpanTag("event") Event event) {
         final var aggregateId = event.getAggregateId();
         log.info("(when) >>>>> aggregateId: {}", aggregateId);
 
@@ -91,7 +92,7 @@ public class BankAccountMongoProjection implements Projection {
 
 
     @NewSpan
-    private void handle(BankAccountCreatedEvent event) {
+    private void handle(@SpanTag("event") BankAccountCreatedEvent event) {
         log.info("(when) BankAccountCreatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
 
         final var document = BankAccountDocument.builder()
@@ -107,7 +108,7 @@ public class BankAccountMongoProjection implements Projection {
     }
 
     @NewSpan
-    private void handle(EmailChangedEvent event) {
+    private void handle(@SpanTag("event") EmailChangedEvent event) {
         log.info("(when) EmailChangedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
@@ -119,7 +120,7 @@ public class BankAccountMongoProjection implements Projection {
     }
 
     @NewSpan
-    private void handle(AddressUpdatedEvent event) {
+    private void handle(@SpanTag("event") AddressUpdatedEvent event) {
         log.info("(when) AddressUpdatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
@@ -131,7 +132,7 @@ public class BankAccountMongoProjection implements Projection {
     }
 
     @NewSpan
-    private void handle(BalanceDepositedEvent event) {
+    private void handle(@SpanTag("event") BalanceDepositedEvent event) {
         log.info("(when) BalanceDepositedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
