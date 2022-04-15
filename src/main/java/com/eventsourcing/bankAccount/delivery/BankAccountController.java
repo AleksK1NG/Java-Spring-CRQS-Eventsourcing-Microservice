@@ -26,7 +26,6 @@ public class BankAccountController {
     @GetMapping("{aggregateId}")
     public ResponseEntity<BankAccountResponseDTO> getBankAccount(@PathVariable String aggregateId) {
         final var query = new GetBankAccountByIDQuery(aggregateId);
-        log.info("GET bank account query: {}", query);
         final var result = queryService.handle(query);
         log.info("GET bank account result: {}", result);
         return ResponseEntity.ok(result);
