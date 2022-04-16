@@ -13,6 +13,8 @@ import com.eventsourcing.es.EventStoreDB;
 import com.eventsourcing.es.Projection;
 import com.eventsourcing.es.SerializerUtils;
 import com.eventsourcing.mappers.BankAccountMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.sleuth.annotation.NewSpan;
@@ -26,7 +28,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -35,24 +36,23 @@ public class BankAccountMongoProjection implements Projection {
 
     private final BankAccountMongoRepository mongoRepository;
     private final EventStoreDB eventStoreDB;
+    private static final String SERVICE_NAME = "microservice";
 
 
     @KafkaListener(topics = {"${microservice.kafka.topics.bank-account-event-store}"},
             groupId = "${microservice.kafka.groupId}",
             concurrency = "${microservice.kafka.default-concurrency}")
     public void bankAccountMongoProjectionListener(@Payload byte[] data, ConsumerRecordMetadata meta, Acknowledgment ack) {
-        log.info("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp());
-        log.info("(BankAccountMongoProjection) data: {}", new String(data));
+        log.info("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}, data: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp(), new String(data));
 
         try {
             final Event[] events = SerializerUtils.deserializeEventsFromJsonBytes(data);
             this.processEvents(Arrays.stream(events).toList());
             ack.acknowledge();
             log.info("ack events: {}", Arrays.toString(events));
-        } catch (Exception e) {
+        } catch (Exception ex) {
             ack.nack(100);
-            log.error("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp());
-            log.error("bankAccountMongoProjectionListener: {}", e.getMessage());
+            log.error("(BankAccountMongoProjection) topic: {}, offset: {}, partition: {}, timestamp: {}", meta.topic(), meta.offset(), meta.partition(), meta.timestamp(), ex);
         }
     }
 
@@ -73,6 +73,8 @@ public class BankAccountMongoProjection implements Projection {
 
     @Override
     @NewSpan
+    @Retry(name = SERVICE_NAME)
+    @CircuitBreaker(name = SERVICE_NAME)
     public void when(@SpanTag("event") Event event) {
         final var aggregateId = event.getAggregateId();
         log.info("(when) >>>>> aggregateId: {}", aggregateId);
@@ -110,7 +112,7 @@ public class BankAccountMongoProjection implements Projection {
     @NewSpan
     private void handle(@SpanTag("event") EmailChangedEvent event) {
         log.info("(when) EmailChangedEvent: {}, aggregateID: {}", event, event.getAggregateId());
-        Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
+        final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
             throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
@@ -122,7 +124,7 @@ public class BankAccountMongoProjection implements Projection {
     @NewSpan
     private void handle(@SpanTag("event") AddressUpdatedEvent event) {
         log.info("(when) AddressUpdatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
-        Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
+        final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
             throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
@@ -134,7 +136,7 @@ public class BankAccountMongoProjection implements Projection {
     @NewSpan
     private void handle(@SpanTag("event") BalanceDepositedEvent event) {
         log.info("(when) BalanceDepositedEvent: {}, aggregateID: {}", event, event.getAggregateId());
-        Optional<BankAccountDocument> documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
+        final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
             throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
 
