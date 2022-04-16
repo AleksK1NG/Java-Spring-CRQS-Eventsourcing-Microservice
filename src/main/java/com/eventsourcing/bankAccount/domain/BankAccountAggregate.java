@@ -4,6 +4,8 @@ import com.eventsourcing.bankAccount.events.AddressUpdatedEvent;
 import com.eventsourcing.bankAccount.events.BalanceDepositedEvent;
 import com.eventsourcing.bankAccount.events.BankAccountCreatedEvent;
 import com.eventsourcing.bankAccount.events.EmailChangedEvent;
+import com.eventsourcing.bankAccount.exceptions.InvalidAddressException;
+import com.eventsourcing.bankAccount.exceptions.InvalidEmailException;
 import com.eventsourcing.es.AggregateRoot;
 import com.eventsourcing.es.Event;
 import com.eventsourcing.es.SerializerUtils;
@@ -57,13 +59,13 @@ public class BankAccountAggregate extends AggregateRoot {
 
     private void handle(final EmailChangedEvent event) {
         Objects.requireNonNull(event.getNewEmail());
-        if (event.getNewEmail().isBlank()) throw new RuntimeException("invalid email address");
+        if (event.getNewEmail().isBlank()) throw new InvalidEmailException();
         this.email = event.getNewEmail();
     }
 
     private void handle(final AddressUpdatedEvent event) {
         Objects.requireNonNull(event.getNewAddress());
-        if (event.getNewAddress().isBlank()) throw new RuntimeException("invalid address");
+        if (event.getNewAddress().isBlank()) throw new InvalidAddressException();
         this.address = event.getNewAddress();
     }
 
