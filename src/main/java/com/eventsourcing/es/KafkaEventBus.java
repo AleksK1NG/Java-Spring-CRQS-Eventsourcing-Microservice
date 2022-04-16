@@ -17,7 +17,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @RequiredArgsConstructor
 public class KafkaEventBus implements EventBus {
+
     private final KafkaTemplate<String, byte[]> kafkaTemplate;
+    private final static long sendTimeout = 3000;
 
     @Value(value = "${order.kafka.topics.bank-account-event-store:bank-account-event-store}")
     private String bankAccountTopicName;
@@ -29,7 +31,7 @@ public class KafkaEventBus implements EventBus {
         final ProducerRecord<String, byte[]> record = new ProducerRecord<>(bankAccountTopicName, eventsBytes);
 
         try {
-            kafkaTemplate.send(record).get(3000, TimeUnit.MILLISECONDS);
+            kafkaTemplate.send(record).get(sendTimeout, TimeUnit.MILLISECONDS);
             log.info("publishing kafka record value >>>>> {}", new String(record.value()));
 
         } catch (Exception ex) {

@@ -15,20 +15,12 @@ import java.util.UUID;
 public class Snapshot {
 
     private UUID id;
-
     private String aggregateId;
-
-
     private String aggregateType;
-
     private byte[] data;
-
     private byte[] metaData;
-
-
     private long version;
     private LocalDateTime timeStamp;
-
 
     @Override
     public String toString() {

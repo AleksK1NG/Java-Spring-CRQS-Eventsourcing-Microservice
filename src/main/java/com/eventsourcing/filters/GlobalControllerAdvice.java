@@ -25,7 +25,6 @@ import java.util.Map;
 @Order(2)
 public class GlobalControllerAdvice {
 
-
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<InternalServerErrorResponse> handleRuntimeException(RuntimeException ex, WebRequest request) {
         final var response = new InternalServerErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage(), LocalDateTime.now().toString());

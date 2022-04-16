@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Data
@@ -14,6 +13,15 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class Event {
+    private UUID id;
+    private String aggregateId;
+    private String eventType;
+    private String aggregateType;
+    private long version;
+    private byte[] data;
+    private byte[] metaData;
+    private LocalDateTime timeStamp;
+
 
     public Event(String eventType, String aggregateType) {
         this.id = UUID.randomUUID();
@@ -21,23 +29,6 @@ public class Event {
         this.aggregateType = aggregateType;
         this.timeStamp = LocalDateTime.now();
     }
-
-    private UUID id;
-
-    private String aggregateId;
-
-    private String eventType;
-
-    private String aggregateType;
-
-    private long version;
-
-    private byte[] data;
-
-    private byte[] metaData;
-
-    //    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-    private LocalDateTime timeStamp;
 
 
     @Override
