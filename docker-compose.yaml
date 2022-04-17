@@ -102,7 +102,9 @@ services:
   grafana:
     container_name: grafana_container
     restart: always
-    image: grafana/grafana
+    build: monitoring/grafana
+    volumes:
+      - ./grafana:/var/lib/grafana
     ports:
       - '3005:3000'
     networks: [ "microservices" ]

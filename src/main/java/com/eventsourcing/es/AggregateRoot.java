@@ -62,10 +62,6 @@ public abstract class AggregateRoot {
         this.clearChanges();
     }
 
-    public String string() {
-        return String.format("id: {%s}, type: {%s}, version: {%s}, changes: {%s}", id, type, version, changes.size());
-    }
-
     private void validateEvent(final Event event) {
         if (Objects.isNull(event) || !event.getAggregateId().equals(this.id))
             throw new InvalidEventException(event.toString());

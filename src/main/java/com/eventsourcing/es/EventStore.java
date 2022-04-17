@@ -53,7 +53,7 @@ public class EventStore implements EventStoreDB {
     @Override
     @NewSpan
     public List<Event> loadEvents(@SpanTag("aggregateId") String aggregateId, @SpanTag("version") long version) {
-        final List<Event> events = jdbcTemplate.query(LOAD_EVENTS_QUERY, Map.of(AGGREGATE_ID, aggregateId, VERSION, version),
+        return jdbcTemplate.query(LOAD_EVENTS_QUERY, Map.of(AGGREGATE_ID, aggregateId, VERSION, version),
                 (rs, rowNum) -> Event.builder()
                         .aggregateId(rs.getString(AGGREGATE_ID))
                         .aggregateType(rs.getString(AGGREGATE_TYPE))
@@ -63,9 +63,6 @@ public class EventStore implements EventStoreDB {
                         .version(rs.getLong(VERSION))
                         .timeStamp(rs.getTimestamp(TIMESTAMP).toLocalDateTime())
                         .build());
-
-        log.info("(loadEvents) events list: {}", events);
-        return events;
     }
 
     @NewSpan
@@ -73,14 +70,14 @@ public class EventStore implements EventStoreDB {
         aggregate.toSnapshot();
         final var snapshot = EventSourcingUtils.snapshotFromAggregate(aggregate);
 
-        int update = jdbcTemplate.update(SAVE_SNAPSHOT_QUERY,
+        int updateResult = jdbcTemplate.update(SAVE_SNAPSHOT_QUERY,
                 Map.of(AGGREGATE_ID, snapshot.getAggregateId(),
                         AGGREGATE_TYPE, snapshot.getAggregateType(),
                         DATA, Objects.isNull(snapshot.getData()) ? new byte[]{} : snapshot.getData(),
                         METADATA, Objects.isNull(snapshot.getMetaData()) ? new byte[]{} : snapshot.getMetaData(),
                         VERSION, snapshot.getVersion()));
 
-        log.info("(saveSnapshot) result: {}", update);
+        log.info("(saveSnapshot) updateResult: {}", updateResult);
     }
 
     @Override
@@ -116,7 +113,7 @@ public class EventStore implements EventStoreDB {
 
     @NewSpan
     private Optional<Snapshot> loadSnapshot(@SpanTag("aggregateId") String aggregateId) {
-        final Optional<Snapshot> snapshot = jdbcTemplate.query(LOAD_SNAPSHOT_QUERY, Map.of(AGGREGATE_ID, aggregateId), (rs, rowNum) -> Snapshot.builder()
+        return jdbcTemplate.query(LOAD_SNAPSHOT_QUERY, Map.of(AGGREGATE_ID, aggregateId), (rs, rowNum) -> Snapshot.builder()
                 .aggregateId(rs.getString(AGGREGATE_ID))
                 .aggregateType(rs.getString(AGGREGATE_TYPE))
                 .data(rs.getBytes(DATA))
@@ -124,9 +121,6 @@ public class EventStore implements EventStoreDB {
                 .version(rs.getLong(VERSION))
                 .timeStamp(rs.getTimestamp(TIMESTAMP).toLocalDateTime())
                 .build()).stream().findFirst();
-
-        snapshot.ifPresent(result -> log.info("(loadSnapshot) snapshot: {}", result));
-        return snapshot;
     }
 
     @NewSpan

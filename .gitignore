@@ -36,3 +36,4 @@ zookeeper
 pgdata
 prometheus
 mongodb_data_container
+grafana

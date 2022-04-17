@@ -28,7 +28,7 @@ public class BankAccountController {
     @GetMapping("{aggregateId}")
     public ResponseEntity<BankAccountResponseDTO> getBankAccount(@PathVariable String aggregateId) {
         final var result = queryService.handle(new GetBankAccountByIDQuery(aggregateId));
-        log.info("GET bank account result: {}", result);
+        log.info("Get bank account result: {}", result);
         return ResponseEntity.ok(result);
     }
 
@@ -36,7 +36,7 @@ public class BankAccountController {
     public ResponseEntity<String> createBankAccount(@Valid @RequestBody CreateBankAccountRequestDTO dto) {
         final var aggregateID = UUID.randomUUID().toString();
         final var id = commandService.handle(new CreateBankAccountCommand(aggregateID, dto.email(), dto.userName(), dto.address()));
-        log.info("CREATE bank account id: {}", id);
+        log.info("Created bank account id: {}", id);
         return ResponseEntity.status(HttpStatus.CREATED).body(id);
     }
 
@@ -63,7 +63,7 @@ public class BankAccountController {
                                                                              @RequestParam(name = "size", defaultValue = "10") Integer size) {
 
         final var result = queryService.handle(new FindAllOrderByBalance(page, size));
-        log.info("GET all by balance result: {}", result);
+        log.info("Get all by balance page: {}, size: {}, result: {}", page, size, result);
         return ResponseEntity.ok(result);
     }
 }
