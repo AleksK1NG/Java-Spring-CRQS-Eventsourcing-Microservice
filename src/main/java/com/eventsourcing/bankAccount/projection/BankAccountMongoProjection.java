@@ -7,6 +7,7 @@ import com.eventsourcing.bankAccount.events.AddressUpdatedEvent;
 import com.eventsourcing.bankAccount.events.BalanceDepositedEvent;
 import com.eventsourcing.bankAccount.events.BankAccountCreatedEvent;
 import com.eventsourcing.bankAccount.events.EmailChangedEvent;
+import com.eventsourcing.bankAccount.exceptions.BankAccountDocumentNotFoundException;
 import com.eventsourcing.bankAccount.repository.BankAccountMongoRepository;
 import com.eventsourcing.es.Event;
 import com.eventsourcing.es.EventStoreDB;
@@ -114,7 +115,7 @@ public class BankAccountMongoProjection implements Projection {
         log.info("(when) EmailChangedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
-            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+            throw new BankAccountDocumentNotFoundException(event.getAggregateId());
 
         final var document = documentOptional.get();
         document.setEmail(event.getNewEmail());
@@ -126,7 +127,7 @@ public class BankAccountMongoProjection implements Projection {
         log.info("(when) AddressUpdatedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
-            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+            throw new BankAccountDocumentNotFoundException(event.getAggregateId());
 
         final var document = documentOptional.get();
         document.setAddress(event.getNewAddress());
@@ -138,11 +139,10 @@ public class BankAccountMongoProjection implements Projection {
         log.info("(when) BalanceDepositedEvent: {}, aggregateID: {}", event, event.getAggregateId());
         final var documentOptional = mongoRepository.findByAggregateId(event.getAggregateId());
         if (documentOptional.isEmpty())
-            throw new RuntimeException("Bank Account Document not found id: {}" + event.getAggregateId());
+            throw new BankAccountDocumentNotFoundException(event.getAggregateId());
 
         final var document = documentOptional.get();
-        final var balance = document.getBalance();
-        final var newBalance = balance.add(event.getAmount());
+        final var newBalance = document.getBalance().add(event.getAmount());
         document.setBalance(newBalance);
         mongoRepository.save(document);
     }

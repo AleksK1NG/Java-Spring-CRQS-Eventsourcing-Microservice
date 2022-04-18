@@ -35,7 +35,7 @@ public class KafkaEventBus implements EventBus {
             log.info("publishing kafka record value >>>>> {}", new String(record.value()));
 
         } catch (Exception ex) {
-            log.error("(KafkaEventBus) publish get", ex);
+            log.error("(KafkaEventBus) publish get timeout", ex);
             throw new RuntimeException(ex);
         }
     }
