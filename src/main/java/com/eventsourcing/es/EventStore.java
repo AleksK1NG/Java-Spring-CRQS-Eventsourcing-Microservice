@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.Serializable;
 import java.util.*;
 
 import static com.eventsourcing.es.Constants.*;
@@ -43,26 +44,24 @@ public class EventStore implements EventStoreDB {
         }
 
         final Event event = changes.get(0);
-        int result = jdbcTemplate.update(SAVE_EVENTS_QUERY, Map.of(
+        int result = jdbcTemplate.update(SAVE_EVENTS_QUERY, mapFromEvent(event));
+        log.info("(saveEvents) saved result: {}, event: {}", result, event);
+    }
+
+    private Map<String, Serializable> mapFromEvent(Event event) {
+        return Map.of(
                 AGGREGATE_ID, event.getAggregateId(),
                 AGGREGATE_TYPE, event.getAggregateType(),
                 EVENT_TYPE, event.getEventType(),
                 DATA, Objects.isNull(event.getData()) ? new byte[]{} : event.getData(),
                 METADATA, Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
-                VERSION, event.getVersion()));
-        log.info("(saveEvents) saved result: {}, event: {}", result, event);
+                VERSION, event.getVersion());
     }
 
 
     @NewSpan
     private void eventsBatchInsert(@SpanTag("events") List<Event> events) {
-        final var args = events.stream().map(event -> Map.of(
-                AGGREGATE_ID, event.getAggregateId(),
-                AGGREGATE_TYPE, event.getAggregateType(),
-                EVENT_TYPE, event.getEventType(),
-                DATA, Objects.isNull(event.getData()) ? new byte[]{} : event.getData(),
-                METADATA, Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
-                VERSION, event.getVersion())).toList();
+        final var args = events.stream().map(this::mapFromEvent).toList();
         final Map<String, ?>[] maps = args.toArray(new Map[0]);
         int[] ints = jdbcTemplate.batchUpdate(SAVE_EVENTS_QUERY, maps);
         log.info("(saveEvents) BATCH saved result: {}, event: {}", ints);
