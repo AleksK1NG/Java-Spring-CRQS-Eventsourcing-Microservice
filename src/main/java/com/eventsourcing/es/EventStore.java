@@ -37,17 +37,35 @@ public class EventStore implements EventStoreDB {
         if (events.isEmpty()) return;
 
         final List<Event> changes = new ArrayList<>(events);
-        changes.forEach(event -> {
-            int result = jdbcTemplate.update(SAVE_EVENTS_QUERY, Map.of(
-                    AGGREGATE_ID, event.getAggregateId(),
-                    AGGREGATE_TYPE, event.getAggregateType(),
-                    EVENT_TYPE, event.getEventType(),
-                    DATA, Objects.isNull(event.getData()) ? new byte[]{} : event.getData(),
-                    METADATA, Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
-                    VERSION, event.getVersion()));
+        if (changes.size() > 1) {
+            this.eventsBatchInsert(changes);
+            return;
+        }
 
-            log.info("(saveEvents) saved result: {}, event: {}", result, event);
-        });
+        final Event event = changes.get(0);
+        int result = jdbcTemplate.update(SAVE_EVENTS_QUERY, Map.of(
+                AGGREGATE_ID, event.getAggregateId(),
+                AGGREGATE_TYPE, event.getAggregateType(),
+                EVENT_TYPE, event.getEventType(),
+                DATA, Objects.isNull(event.getData()) ? new byte[]{} : event.getData(),
+                METADATA, Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
+                VERSION, event.getVersion()));
+        log.info("(saveEvents) saved result: {}, event: {}", result, event);
+    }
+
+
+    @NewSpan
+    private void eventsBatchInsert(@SpanTag("events") List<Event> events) {
+        final var args = events.stream().map(event -> Map.of(
+                AGGREGATE_ID, event.getAggregateId(),
+                AGGREGATE_TYPE, event.getAggregateType(),
+                EVENT_TYPE, event.getEventType(),
+                DATA, Objects.isNull(event.getData()) ? new byte[]{} : event.getData(),
+                METADATA, Objects.isNull(event.getMetaData()) ? new byte[]{} : event.getMetaData(),
+                VERSION, event.getVersion())).toList();
+        final Map<String, ?>[] maps = args.toArray(new Map[0]);
+        int[] ints = jdbcTemplate.batchUpdate(SAVE_EVENTS_QUERY, maps);
+        log.info("(saveEvents) BATCH saved result: {}, event: {}", ints);
     }
 
     @Override
